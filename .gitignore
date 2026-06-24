@@ -92,14 +92,6 @@ docs/api/
 # ============================================================
 # PROJECT SPECIFIC
 # ============================================================
-# Generated textures (если будут сохраняться)
-textures/
-generated/
-precomputed/
-*.jpeg
-*.jpg
-*.png
-*.webp
 
 # IndexedDB (браузерные кэши)
 *.sqlite
