@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">hold</string>
+    <string name="text_for_button">What?</string>
+    <string name="clock">00:00</string>
+</resources>

@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Техноелка — Ель</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #0a0f0a; }
+        
+        #info, #debug, #progress, #lod-indicator {
+            display: none !important;
+        }
+
+        #fps-counter {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0,0,0,0.75);
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 6px 12px;
+            border-radius: 6px;
+            z-index: 100;
+            pointer-events: none;
+            letter-spacing: 1px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .fps-low { color: #ff4444 !important; }
+        .fps-medium { color: #ffaa44 !important; }
+        .fps-high { color: #44ff44 !important; }
+
+        #clock-info {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #88aadd;
+            font-family: monospace;
+            font-size: 16px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px 24px;
+            border-radius: 10px;
+            z-index: 100;
+            border: 1px solid rgba(255,255,255,0.1);
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+        #clock-info span {
+            color: #88ccff;
+            font-weight: bold;
+            text-shadow: 0 0 15px rgba(68,136,255,0.5);
+        }
+        #clock-info .time {
+            color: #ffdd88;
+            text-shadow: 0 0 15px rgba(255,200,50,0.3);
+        }
+
+        #settingsBtn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            z-index: 150;
+            backdrop-filter: blur(4px);
+            transition: all 0.3s;
+        }
+        #settingsBtn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.05);
+        }
+
+        #settingsPanel {
+            position: fixed;
+            top: 0;
+            left: -380px;
+            width: 360px;
+            height: 100vh;
+            background: rgba(10, 15, 10, 0.95);
+            backdrop-filter: blur(12px);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            z-index: 200;
+            padding: 20px;
+            overflow-y: auto;
+            transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 4px 0 40px rgba(0,0,0,0.6);
+            font-family: monospace;
+            color: #ddd;
+        }
+        #settingsPanel.open { left: 0; }
+        #settingsPanel h2 {
+            color: #8aca6a;
+            font-size: 16px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 10px;
+        }
+        .setting-group {
+            margin-bottom: 14px;
+            padding: 12px 14px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .setting-group .line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 3px 0;
+            color: #888;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        .setting-group .line .val { color: #8aca6a; }
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 14px;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .close-btn:hover { color: #fff; }
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            z-index: 150;
+            display: none;
+        }
+        #overlay.active { display: block; }
+        input[type="checkbox"] { accent-color: #8aca6a; cursor: pointer; }
+        input[type="range"] { width: 80px; accent-color: #8aca6a; cursor: pointer; }
+        @media (max-width: 500px) {
+            #settingsPanel { width: 100%; left: -100%; }
+        }
+
+        #sun-controls {
+            position: absolute;
+            bottom: 145px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        #sun-controls button {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: monospace;
+            backdrop-filter: blur(4px);
+            transition: all 0.3s;
+        }
+        #sun-controls button:hover {
+            background: rgba(255,255,255,0.18);
+            transform: scale(1.05);
+        }
+        #sun-controls .time-display {
+            color: #88ccff;
+            padding: 6px 12px;
+            font-size: 14px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+    </style>
+</head>
+<body>
+    <div id="info" style="display:none;">🌲 ЕЛЬ | LOD + Оптимизация</div>
+    <div id="debug" style="display:none;">Загрузка...</div>
+    <div id="progress" style="display:none;">Загрузка ствола...</div>
+    <div id="lod-indicator" style="display:none;">LOD: ВЫСОКОЕ</div>
+
+    <div id="fps-counter">FPS: --</div>
+    <div id="clock-info">🌙 Тень: <span id="direction">12:00</span> · ☀️ <span class="time" id="currentTime">--:--</span></div>
+
+    <div id="sun-controls">
+        <button id="prevHour">◀</button>
+        <span class="time-display" id="timeDisplay">12:00</span>
+        <button id="nextHour">▶</button>
+        <button id="syncTime" style="background:rgba(68,136,255,0.2);border-color:rgba(68,136,255,0.3);">🔄 Сейчас</button>
+    </div>
+
+    <button id="settingsBtn">⚙️</button>
+    <div id="overlay"></div>
+    <div id="settingsPanel">
+        <button class="close-btn" id="closeSettings">✕</button>
+        <h2>🌲 Настройки</h2>
+        <div class="setting-group">
+            <div class="line"><span>Статус</span><span class="val" id="debugText">Загрузка...</span></div>
+            <div class="line"><span>LOD</span><span class="val" id="lodText">ВЫСОКОЕ</span></div>
+        </div>
+        <div class="setting-group">
+            <div class="line"><span>🌬️ Ветер</span><span class="val"><input type="checkbox" id="windToggle" checked></span></div>
+            <div class="line"><span>❄️ Снег</span><span class="val"><input type="checkbox" id="snowToggle" checked></span></div>
+            <div class="line"><span>🌡️ Температура</span><span class="val"><input type="range" id="tempSlider" min="-20" max="10" value="-5"> <span id="tempDisplay" style="color:#8aca6a;">-5°C</span></span></div>
+        </div>
+        <div class="setting-group" style="background:rgba(255,255,255,0.02);">
+            <div style="font-size:11px;color:#555;text-align:center;">Техноелка · <span id="fpsInSettings">--</span> FPS</div>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { addTrunkToScene } from './trunk.js';
+        import { addBranchesToTrunk } from './branches.js';
+        import { addNeedlesToScene } from './needles.js';
+        import { addSnowToScene } from './snow.js';
+        import { addSunAndStar } from './sun.js';
+        import { addClock } from './clock.js';
+        
+        const debugDiv = document.getElementById('debug');
+        const progressDiv = document.getElementById('progress');
+        const fpsDiv = document.getElementById('fps-counter');
+        const lodIndicator = document.getElementById('lod-indicator');
+        const debugText = document.getElementById('debugText');
+        const lodText = document.getElementById('lodText');
+        const fpsInSettings = document.getElementById('fpsInSettings');
+        const directionSpan = document.getElementById('direction');
+        const currentTimeSpan = document.getElementById('currentTime');
+        const timeDisplay = document.getElementById('timeDisplay');
+
+        // ===== НАСТРОЙКИ =====
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const overlay = document.getElementById('overlay');
+        const closeBtn = document.getElementById('closeSettings');
+        const windToggle = document.getElementById('windToggle');
+        const snowToggle = document.getElementById('snowToggle');
+        const tempSlider = document.getElementById('tempSlider');
+        const tempDisplay = document.getElementById('tempDisplay');
+
+        settingsBtn.addEventListener('click', () => {
+            settingsPanel.classList.add('open');
+            overlay.classList.add('active');
+        });
+        closeBtn.addEventListener('click', () => {
+            settingsPanel.classList.remove('open');
+            overlay.classList.remove('active');
+        });
+        overlay.addEventListener('click', () => {
+            settingsPanel.classList.remove('open');
+            overlay.classList.remove('active');
+        });
+        tempSlider.addEventListener('input', () => {
+            tempDisplay.textContent = `${tempSlider.value}°C`;
+        });
+
+        // ========== FPS ==========
+        let fpsHistory = [];
+        let lastFpsTimestamp = performance.now();
+        let framesThisSecond = 0;
+        let currentFps = 0;
+        
+        function updateAccurateFPS() {
+            framesThisSecond++;
+            const now = performance.now();
+            const delta = now - lastFpsTimestamp;
+            
+            if (delta >= 200) {
+                const instantFps = Math.round((framesThisSecond * 1000) / delta);
+                fpsHistory.push(instantFps);
+                if (fpsHistory.length > 6) fpsHistory.shift();
+                const sorted = [...fpsHistory].sort((a, b) => a - b);
+                const medianFps = sorted[Math.floor(sorted.length / 2)];
+                currentFps = medianFps;
+                
+                fpsDiv.textContent = `FPS: ${currentFps}`;
+                fpsDiv.classList.remove('fps-low', 'fps-medium', 'fps-high');
+                if (currentFps < 25) fpsDiv.classList.add('fps-low');
+                else if (currentFps < 50) fpsDiv.classList.add('fps-medium');
+                else fpsDiv.classList.add('fps-high');
+                
+                fpsInSettings.textContent = currentFps;
+                
+                framesThisSecond = 0;
+                lastFpsTimestamp = now;
+            }
+            requestAnimationFrame(updateAccurateFPS);
+        }
+        updateAccurateFPS();
+        
+        // ========== СЦЕНА ==========
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a1a0a);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
+        camera.position.set(2.0, 2.2, 3.0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.shadowMap.bias = 0.0001;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+        
+        // ========== ОСВЕЩЕНИЕ ==========
+        const ambientLight = new THREE.AmbientLight(0x3a4a3a, 0.4);
+        scene.add(ambientLight);
+        
+        // ========== LOD ==========
+        let currentLodLevel = 0;
+        let sunAndStar = null;
+        let shadowLight = null;
+        let clock = null;
+        
+        function updateLOD() {
+            const distance = camera.position.length();
+            let newLodLevel = 0;
+            if (distance > 7) newLodLevel = 2;
+            else if (distance > 3.5) newLodLevel = 1;
+            else newLodLevel = 0;
+            
+            if (newLodLevel === currentLodLevel) return;
+            currentLodLevel = newLodLevel;
+            
+            const labels = ['ВЫСОКОЕ', 'СРЕДНЕЕ', 'НИЗКОЕ'];
+            if (lodIndicator) lodIndicator.innerHTML = `LOD: ${labels[currentLodLevel]}`;
+            lodText.textContent = labels[currentLodLevel];
+            
+            if (currentLodLevel === 0) {
+                renderer.shadowMap.enabled = true;
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            } 
+            else if (currentLodLevel === 1) {
+                renderer.shadowMap.enabled = true;
+                renderer.setPixelRatio(1);
+            }
+            else {
+                renderer.shadowMap.enabled = false;
+                renderer.setPixelRatio(0.8);
+            }
+        }
+        
+        // ========== УПРАВЛЕНИЕ СОЛНЦЕМ ==========
+        let currentHour = 12;
+        let currentMinute = 0;
+        let isAutoSync = true;
+        const sunDistance = 50;
+        const sunHeight = 35;
+
+        function updateSunPositionByTime(hours, minutes) {
+            const totalMinutes = hours * 60 + minutes;
+            const angle = -((totalMinutes / 720) * Math.PI * 2)
+            const heightFactor = Math.sin((totalMinutes / 1440) * Math.PI * 2 - Math.PI / 2);
+            const elevation = Math.max(0.0, heightFactor * 0.9 + 0.1);
+            
+            const x = Math.sin(angle) * sunDistance * (1 - elevation * 0.3);
+            const z = Math.cos(angle) * sunDistance * (1 - elevation * 0.3);
+            const y = elevation * sunHeight;
+            
+            if (sunAndStar && sunAndStar.updatePosition) {
+                sunAndStar.updatePosition(x, y, z);
+            }
+            
+            const h = String(Math.floor(hours)).padStart(2, '0');
+            const m = String(Math.floor(minutes)).padStart(2, '0');
+            currentTimeSpan.textContent = `${h}:${m}`;
+            timeDisplay.textContent = `${h}:${m}`;
+            updateTimeDisplay();
+        }
+
+        function getRealTime() {
+            const now = new Date();
+            return { hours: now.getHours(), minutes: now.getMinutes() };
+        }
+
+        function setRealTime() {
+            const { hours, minutes } = getRealTime();
+            currentHour = hours;
+            currentMinute = minutes;
+            updateSunPositionByTime(hours, minutes);
+            isAutoSync = true;
+        }
+
+        document.getElementById('prevHour').addEventListener('click', () => {
+            isAutoSync = false;
+            currentMinute -= 30;
+            if (currentMinute < 0) {
+                currentMinute += 60;
+                currentHour--;
+                if (currentHour < 0) currentHour = 23;
+            }
+            updateSunPositionByTime(currentHour, currentMinute);
+        });
+
+        document.getElementById('nextHour').addEventListener('click', () => {
+            isAutoSync = false;
+            currentMinute += 30;
+            if (currentMinute >= 60) {
+                currentMinute -= 60;
+                currentHour++;
+                if (currentHour >= 24) currentHour = 0;
+            }
+            updateSunPositionByTime(currentHour, currentMinute);
+        });
+
+        document.getElementById('syncTime').addEventListener('click', setRealTime);
+
+        // ========== ОБНОВЛЕНИЕ ТЕНИ НА ЦИФЕРБЛАТЕ (ИНВЕРСИЯ) ==========
+        function updateTimeDisplay() {
+            if (!shadowLight) return;
+            const lightPos = shadowLight.position.clone();
+            // Инвертируем X — тень идет ПО часовой стрелке
+            const dir = new THREE.Vector3(-lightPos.x, 0, -lightPos.z).normalize();
+            let angle = Math.atan2(dir.z, dir.x);
+    
+            let hours = ((angle / Math.PI * 6 + 6) % 12);
+            if (hours < 0) hours += 12;
+            const h = Math.round(hours);
+            const displayHour = h === 0 ? 12 : h;
+            directionSpan.textContent = `${displayHour}:00`;
+        }
+        
+        // ========== ЗАГРУЗКА ==========
+        async function loadScene() {
+            if (progressDiv) progressDiv.innerHTML = '🌲 Создаю ствол...';
+            if (debugDiv) debugDiv.innerHTML = 'Ствол...';
+            debugText.textContent = 'Ствол...';
+            await new Promise(r => setTimeout(r, 10));
+            const { barkMaterial } = addTrunkToScene(scene, 4.0);
+            
+            if (progressDiv) progressDiv.innerHTML = '🌿 Создаю ветки...';
+            if (debugDiv) debugDiv.innerHTML = 'Ветки...';
+            debugText.textContent = 'Ветки...';
+            await new Promise(r => setTimeout(r, 50));
+            addBranchesToTrunk(scene, barkMaterial);
+            
+            if (progressDiv) progressDiv.innerHTML = '🍃 Создаю хвою...';
+            if (debugDiv) debugDiv.innerHTML = 'Хвоя...';
+            debugText.textContent = 'Хвоя...';
+            await new Promise(r => setTimeout(r, 50));
+            addNeedlesToScene(scene);
+            
+            if (progressDiv) progressDiv.innerHTML = '❄️ Добавляю снег...';
+            if (debugDiv) debugDiv.innerHTML = 'Снег...';
+            debugText.textContent = 'Снег...';
+            await new Promise(r => setTimeout(r, 50));
+            addSnowToScene(scene);
+            
+            if (progressDiv) progressDiv.innerHTML = '☀️ Добавляю солнце...';
+            if (debugDiv) debugDiv.innerHTML = 'Солнце...';
+            debugText.textContent = 'Солнце...';
+            await new Promise(r => setTimeout(r, 30));
+            sunAndStar = addSunAndStar(scene);
+            
+            shadowLight = sunAndStar.getShadowLight();
+            
+            if (shadowLight) {
+                shadowLight.castShadow = true;
+                shadowLight.shadow.mapSize.width = 8192;
+                shadowLight.shadow.mapSize.height = 8192;
+                shadowLight.shadow.camera.near = 0.1;
+                shadowLight.shadow.camera.far = 500;
+                shadowLight.shadow.camera.left = -250;
+                shadowLight.shadow.camera.right = 250;
+                shadowLight.shadow.camera.top = 250;
+                shadowLight.shadow.camera.bottom = -250;
+                shadowLight.shadow.bias = -0.01;
+                shadowLight.shadow.normalBias = 0.02;
+                shadowLight.shadow.radius = 4;
+                
+                shadowLight.shadow.camera.updateProjectionMatrix();
+                shadowLight.updateMatrixWorld();
+                
+                console.log('✅ Тень от солнца включена');
+            }
+            
+            // ===== ЗЕМЛЯ =====
+            const groundMat = new THREE.MeshStandardMaterial({ 
+                color: 0x1a2a1a, 
+                roughness: 0.9,
+                metalness: 0
+            });
+            const ground = new THREE.Mesh(new THREE.CircleGeometry(200.0, 64), groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.12;
+            ground.receiveShadow = true;
+            ground.frustumCulled = false;
+            scene.add(ground);
+            
+            // ===== ЦИФЕРБЛАТ =====
+            if (progressDiv) progressDiv.innerHTML = '🌙 Добавляю циферблат...';
+            if (debugDiv) debugDiv.innerHTML = 'Циферблат...';
+            debugText.textContent = 'Циферблат...';
+            await new Promise(r => setTimeout(r, 30));
+            clock = addClock(scene);
+            
+            setRealTime();
+            
+            if (progressDiv) progressDiv.style.display = 'none';
+            if (debugDiv) debugDiv.innerHTML = '✅ Готово!';
+            debugText.textContent = '✅ Готово!';
+            
+            console.log('✅ Елка загружена!');
+        }
+        
+        loadScene();
+        
+        // ========== УПРАВЛЕНИЕ ==========
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.rotateSpeed = 1.0;
+        controls.zoomSpeed = 0.8;
+        controls.target.set(0, 2.0, 0);
+        controls.maxDistance = 500;
+        controls.minDistance = 0.1;
+        
+        // ========== АНИМАЦИЯ ==========
+        let lastTimeUpdate = 0;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = performance.now() / 1000;
+            if (sunAndStar) sunAndStar.update(time);
+            if (clock) clock.updateClock(time);
+            
+            if (isAutoSync && time - lastTimeUpdate > 5) {
+                lastTimeUpdate = time;
+                const { hours, minutes } = getRealTime();
+                if (hours !== currentHour || Math.floor(minutes / 5) !== Math.floor(currentMinute / 5)) {
+                    currentHour = hours;
+                    currentMinute = minutes;
+                    updateSunPositionByTime(hours, minutes);
+                }
+            }
+            
+            updateTimeDisplay();
+            
+            if (shadowLight && renderer.shadowMap.enabled) {
+                shadowLight.updateMatrixWorld(true);
+                shadowLight.shadow.camera.updateProjectionMatrix();
+                shadowLight.shadow.camera.updateMatrixWorld();
+                shadowLight.shadow.needsUpdate = true;
+                
+                const dist = camera.position.length();
+                if (dist > 100) {
+                    shadowLight.shadow.bias = -0.05;
+                } else if (dist > 50) {
+                    shadowLight.shadow.bias = -0.02;
+                } else if (dist > 20) {
+                    shadowLight.shadow.bias = -0.005;
+                } else {
+                    shadowLight.shadow.bias = -0.001;
+                }
+            }
+            
+            updateLOD();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        console.log('✅ Елка загружена!');
+    </script>
+</body>
+</html>

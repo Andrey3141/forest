@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@akb2/three-tree-geometry": "^1.1.1"
+  }
+}
